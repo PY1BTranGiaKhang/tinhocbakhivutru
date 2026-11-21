@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeClass Cloud — Hệ Thống Chấm Bài Lớp Học Trực Tuyến</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="top-header">
+      <div class="logo"><span class="code">CODE</span><span class="vn">CLASS</span></div>
+      <div class="user-panel">
+        <span id="cloudBadge" class="cloud-status cloud-off">○ Chế độ Offline</span>
+        <span>Học sinh: <span class="user-badge" id="currentUserDisplay">Chưa nhập tên</span></span>
+        <button class="btn-cf" onclick="changeStudentName()">Đổi tên / Lớp</button>
+      </div>
+    </div>
+
+    <!-- Menu -->
+    <div class="navbar">
+      <div class="nav-items">
+        <a id="nav-problemset" class="active" onclick="showTab('problemset')">Kho bài tập</a>
+        <a id="nav-submissions" onclick="showTab('submissions')">Bài nộp cả lớp (Live)</a>
+        <a id="nav-custom" onclick="showTab('custom')">Chạy thử code (IDE)</a>
+        <a id="nav-teacher" onclick="showTab('teacher')">⚙ Quản lý & Firebase (GV)</a>
+      </div>
+      <div class="search-box">
+        <input type="text" id="searchInput" onkeyup="filterProblems()" placeholder="Tìm mã hoặc tên bài..." />
+      </div>
+    </div>
+
+    <div class="main-layout">
+      <!-- CỘT CHÍNH BÊN TRÁI -->
+      <div class="content-col">
+
+        <!-- TAB 1: DANH SÁCH BÀI TẬP -->
+        <div id="tab-problemset" class="cf-box">
+          <div class="cf-box-header">
+            <span>Danh sách bài tập luyện tập</span>
+            <span style="font-weight:normal; font-size:11px; color:#555;">Máy chấm: Piston Cloud Compiler</span>
+          </div>
+          <table class="cf-table" id="problemTable">
+            <thead>
+              <tr>
+                <th style="width:70px;">Mã</th>
+                <th>Tên bài tập</th>
+                <th style="width:80px;">Điểm</th>
+                <th style="width:85px;">Số Test</th>
+              </tr>
+            </thead>
+            <tbody id="problemListBody"></tbody>
+          </table>
+        </div>
+
+        <!-- CHI TIẾT ĐỀ BÀI & NỘP CODE -->
+        <div id="problem-detail" class="cf-box" style="display:none;">
+          <div class="cf-box-header">
+            <span id="detail-breadcrumb">Bài tập</span>
+            <a onclick="showTab('problemset')">← Quay lại danh sách bài</a>
+          </div>
+          <div class="cf-box-body">
+            <div class="problem-header">
+              <h2 id="p-title"></h2>
+              <div class="limits">Giới hạn thời gian: 2.0 giây | Giới hạn bộ nhớ: 256 MB</div>
+            </div>
+
+            <div id="p-desc" style="white-space:pre-line;"></div>
+            <div class="section-label">Dữ liệu vào (Input)</div>
+            <div id="p-input" style="white-space:pre-line;"></div>
+            <div class="section-label">Dữ liệu ra (Output)</div>
+            <div id="p-output" style="white-space:pre-line;"></div>
+
+            <div class="section-label">Ví dụ minh họa</div>
+            <div class="sample-box">
+              <div class="sample-title">
+                <span>Input</span>
+                <a onclick="copyText('p-sample-in')">Sao chép</a>
+              </div>
+              <div class="sample-content" id="p-sample-in"></div>
+              <div class="sample-title" style="border-top:1px solid #888;">
+                <span>Output</span>
+              </div>
+              <div class="sample-content" id="p-sample-out"></div>
+            </div>
+
+            <!-- Khu vực viết code & nộp bài -->
+            <div class="submit-area">
+              <div class="toolbar">
+                <div>
+                  <b>Ngôn ngữ: </b>
+                  <select id="langSelect" onchange="loadTemplateCode()">
+                    <option value="cpp">C++ (GCC 10.2.0)</option>
+                    <option value="python">Python (3.10.0)</option>
+                    <option value="java">Java (OpenJDK 15.0.2)</option>
+                    <option value="pascal">Free Pascal (3.2.2)</option>
+                  </select>
+                </div>
+                <div>
+                  <button class="btn-cf" onclick="loadTemplateCode()">Nạp code mẫu</button>
+                  <button class="btn-cf" onclick="runSampleTest()">▶ Chạy thử với Ví dụ</button>
+                  <button class="btn-cf btn-primary" onclick="submitRealCode()">✔ Nộp bài chấm điểm</button>
+                </div>
+              </div>
+
+              <textarea class="code-editor" id="codeInput" spellcheck="false"></textarea>
+
+              <div id="quickRunBox" style="display:none; margin-top:10px; border:1px solid #999; background:#f9f9f9; padding:8px;">
+                <div style="font-weight:bold; margin-bottom:4px;" id="quickRunStatus">Đang biên dịch...</div>
+                <pre id="quickRunOutput" style="font-family:monospace; font-size:12px; white-space:pre-wrap; max-height:160px; overflow:auto;"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: LỊCH SỬ CHẤM BÀI CẢ LỚP -->
+        <div id="tab-submissions" class="cf-box" style="display:none;">
+          <div class="cf-box-header">
+            <span>Trạng thái nộp bài cả lớp (Tự động cập nhật)</span>
+            <button class="btn-cf" onclick="syncFromFirebase()">↻ Làm mới ngay</button>
+          </div>
+          <table class="cf-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Thời gian</th>
+                <th>Học sinh</th>
+                <th>Bài tập</th>
+                <th>Ngôn ngữ</th>
+                <th>Kết quả (Verdict)</th>
+                <th>Mã nguồn</th>
+              </tr>
+            </thead>
+            <tbody id="subHistory"></tbody>
+          </table>
+        </div>
+
+        <!-- TAB 3: CHẠY THỬ CODE TỰ DO (IDE) -->
+        <div id="tab-custom" class="cf-box" style="display:none;">
+          <div class="cf-box-header">Trình biên dịch trực tuyến (Custom Invocation)</div>
+          <div class="cf-box-body">
+            <div class="toolbar">
+              <div>
+                <b>Ngôn ngữ: </b>
+                <select id="ideLang" onchange="loadIdeTemplate()">
+                  <option value="cpp">C++ (GCC 10.2.0)</option>
+                  <option value="python">Python (3.10.0)</option>
+                  <option value="java">Java (OpenJDK 15.0.2)</option>
+                  <option value="pascal">Free Pascal (3.2.2)</option>
+                </select>
+              </div>
+              <button class="btn-cf btn-primary" onclick="runCustomIDE()">▶ Biên dịch & Chạy (Run)</button>
+            </div>
+            <textarea class="code-editor" id="ideCode" spellcheck="false"></textarea>
+            <div class="custom-test-box">
+              <div>
+                <b>Dữ liệu vào (Standard Input):</b>
+                <textarea id="ideInput" placeholder="Nhập dữ liệu đầu vào tại đây..."></textarea>
+              </div>
+              <div>
+                <b>Kết quả xuất ra (Standard Output):</b>
+                <textarea id="ideOutput" readonly placeholder="Kết quả chạy chương trình sẽ hiện ở đây..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: CỔNG GIÁO VIÊN -->
+        <div id="tab-teacher" class="cf-box" style="display:none;">
+          <div class="cf-box-header">
+            <span>Cổng Giáo Viên — Cấu hình Firebase & Tạo đề</span>
+            <button class="btn-cf" onclick="exportProblemsJSON()">Xuất đề (.json)</button>
+          </div>
+          <div class="cf-box-body">
+            <div id="teacherLock">
+              <p style="margin-bottom:8px;">Nhập mật khẩu giáo viên (Mặc định xem trong <code>config.js</code>):</p>
+              <input type="password" id="teacherPass" placeholder="Mật khẩu..." style="padding:5px; border:1px solid #888;" />
+              <button class="btn-cf btn-primary" onclick="unlockTeacher()">Mở khóa</button>
+            </div>
+
+            <div id="teacherPanel" style="display:none;">
+              <div class="teacher-cloud-box">
+                <h4 style="color:#3b5998; margin-bottom:6px;">1. Kết nối Firebase Realtime Database (Thu bài cả lớp)</h4>
+                <div class="form-group">
+                  <label>Dán URL Firebase Database của bạn vào đây:</label>
+                  <input type="text" id="firebaseUrlInput" placeholder="https://firebasedatabase.app" />
+                </div>
+                <button class="btn-cf btn-primary" onclick="saveFirebaseConfig()">Lưu & Đồng bộ lên Cloud</button>
+                <button class="btn-cf" onclick="resetClassSubmissions()" style="margin-left:6px; color:#c00;">Xóa bài nộp cũ trên Cloud</button>
+              </div>
+
+              <h4 style="color:#3b5998; margin-bottom:8px;">2. Thêm bài tập mới (Tự động đẩy xuống máy toàn bộ học sinh)</h4>
+              <div style="display:grid; grid-template-columns: 110px 1fr 110px; gap:10px;">
+                <div class="form-group">
+                  <label>Mã bài (VD: B05)</label>
+                  <input type="text" id="newId" placeholder="B05" />
+                </div>
+                <div class="form-group">
+                  <label>Tên bài tập</label>
+                  <input type="text" id="newTitle" placeholder="Tính tổng các số chẵn" />
+                </div>
+                <div class="form-group">
+                  <label>Điểm số</label>
+                  <input type="number" id="newDiff" value="100" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Chủ đề / Thẻ (Tag)</label>
+                <input type="text" id="newTag" placeholder="vòng lặp, mảng 1 chiều" />
+              </div>
+              <div class="form-group">
+                <label>Nội dung đề bài</label>
+                <textarea id="newDesc" rows="3" placeholder="Mô tả chi tiết yêu cầu bài toán..."></textarea>
+              </div>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div class="form-group">
+                  <label>Mô tả Input</label>
+                  <textarea id="newInputDesc" rows="2" placeholder="Dòng đầu chứa số nguyên n..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Mô tả Output</label>
+                  <textarea id="newOutputDesc" rows="2" placeholder="In ra kết quả..."></textarea>
+                </div>
+              </div>
+
+              <div class="section-label">Các bộ Test chấm điểm (Test 1 là Ví dụ hiển thị, các Test sau là Test ẩn)</div>
+              <div id="testcasesContainer">
+                <div class="testcase-row">
+                  <textarea class="tc-in" rows="2" placeholder="Input Test 1 (Ví dụ)"></textarea>
+                  <textarea class="tc-out" rows="2" placeholder="Output chuẩn Test 1"></textarea>
+                  <span>Test 1</span>
+                </div>
+                <div class="testcase-row">
+                  <textarea class="tc-in" rows="2" placeholder="Input Test 2 (Test ẩn)"></textarea>
+                  <textarea class="tc-out" rows="2" placeholder="Output chuẩn Test 2"></textarea>
+                  <span>Test 2</span>
+                </div>
+              </div>
+              <button class="btn-cf" onclick="addTestcaseRow()">+ Thêm Testcase</button>
+              <button class="btn-cf btn-primary" onclick="saveNewProblem()" style="margin-left:8px;">Lưu & Phát đề cho lớp</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CỘT PHẢI (SIDEBAR) -->
+      <div class="sidebar-col">
+        <div class="cf-box">
+          <div class="cf-box-header">→ Tiến độ cá nhân</div>
+          <div class="cf-box-body">
+            <div>Học sinh: <b id="sideStudentName">Chưa nhập tên</b></div>
+            <div style="margin-top:5px;">Đã giải đúng: <b id="solvedCount" style="color:#008000;">0</b> / <span id="totalCount">0</span> bài</div>
+            <div style="margin-top:5px;">Tổng điểm: <b id="studentScore" style="color:#3b5998;">0</b> điểm</div>
+          </div>
+        </div>
+
+        <div class="cf-box">
+          <div class="cf-box-header">
+            <span>→ Bảng xếp hạng trực tiếp</span>
+            <span style="font-size:10px; color:#080;">● LIVE</span>
+          </div>
+          <div class="cf-box-body" style="padding:4px 8px;">
+            <table class="cf-table" style="font-size:12px;">
+              <thead>
+                <tr><th>#</th><th>Học sinh</th><th>Số bài</th><th>Điểm</th></tr>
+              </thead>
+              <tbody id="leaderboardBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="cf-box">
+          <div class="cf-box-header">→ Lưu ý cho học sinh</div>
+          <div class="cf-box-body" style="font-size:12px; color:#444;">
+            <p>1. Nhấn <b>Đổi tên / Lớp</b> ở góc trên để ghi nhận điểm vào bảng xếp hạng.</p>
+            <p style="margin-top:4px;">2. Dùng nhập xuất chuẩn (<code>cin/cout</code> hoặc <code>input()/print()</code>), không dùng <code>freopen</code>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal xem code -->
+  <div id="codeModal" class="modal-bg" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-box">
+      <div class="cf-box-header">
+        <span id="modalTitle">Chi tiết bài nộp</span>
+        <a onclick="document.getElementById('codeModal').style.display='none'">✖ Đóng</a>
+      </div>
+      <div class="modal-body">
+        <p id="modalInfo" style="margin-bottom:8px; font-weight:bold;"></p>
+        <pre id="modalCodeContent"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nạp các file JavaScript theo đúng thứ tự -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

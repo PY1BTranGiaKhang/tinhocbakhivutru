@@ -1,0 +1,153 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: Verdana, Arial, sans-serif;
+  font-size: 13px;
+  color: #222;
+  background-color: #fff;
+  line-height: 1.5;
+}
+a { color: #0000cc; text-decoration: none; cursor: pointer; }
+a:hover { text-decoration: underline; }
+
+.wrapper { max-width: 1180px; margin: 0 auto; padding: 10px 15px 50px; }
+
+/* Header */
+.top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.logo { font-family: 'Trebuchet MS', sans-serif; font-size: 28px; font-weight: bold; letter-spacing: -1px; }
+.logo .code { color: #000; }
+.logo .vn { color: #3b5998; }
+.user-panel { display: flex; align-items: center; gap: 8px; font-size: 12px; flex-wrap: wrap; }
+.user-badge { background: #eef3fb; border: 1px solid #b9c9e8; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #3b5998; }
+.cloud-status { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+.cloud-on { background: #d4edc9; color: #006600; border: 1px solid #99cc88; }
+.cloud-off { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+
+/* Navbar */
+.navbar {
+  border: 1px solid #b9b9b9;
+  border-radius: 5px;
+  padding: 7px 12px;
+  margin-bottom: 18px;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.nav-items a {
+  color: #000;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-right: 18px;
+  font-size: 12px;
+  padding-bottom: 3px;
+}
+.nav-items a.active { border-bottom: 3px solid #3b5998; }
+.search-box input { border: 1px solid #b9b9b9; padding: 4px 8px; font-size: 12px; border-radius: 3px; width: 210px; }
+
+/* Layout 2 cột */
+.main-layout { display: flex; gap: 20px; align-items: flex-start; }
+.content-col { flex: 1; min-width: 0; }
+.sidebar-col { width: 290px; flex-shrink: 0; }
+
+/* Box kiểu Codeforces */
+.cf-box { border: 1px solid #b9b9b9; border-radius: 5px; margin-bottom: 18px; background: #fff; }
+.cf-box-header {
+  padding: 6px 10px;
+  border-bottom: 1px solid #b9b9b9;
+  color: #3b5998;
+  font-weight: bold;
+  font-size: 13px;
+  background: #f9f9f9;
+  border-radius: 5px 5px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cf-box-body { padding: 12px; }
+
+/* Bảng */
+table.cf-table { width: 100%; border-collapse: collapse; }
+table.cf-table th, table.cf-table td { border: 1px solid #e1e1e1; padding: 7px 9px; text-align: left; }
+table.cf-table th { background: #f4f4f4; font-weight: bold; text-align: center; }
+table.cf-table tr:nth-child(even) { background-color: #f8f8f8; }
+table.cf-table tr.solved-row { background-color: #d4edc9 !important; }
+.text-center { text-align: center !important; }
+.tag {
+  display: inline-block; background: #f0f0f0; border: 1px solid #d4d4d4;
+  border-radius: 10px; padding: 1px 7px; font-size: 11px; color: #555; margin-left: 4px; float: right;
+}
+
+/* Đề bài */
+.problem-header { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.problem-header h2 { font-size: 18px; margin-bottom: 4px; }
+.limits { font-size: 12px; color: #444; }
+.section-label { font-weight: bold; margin-top: 12px; margin-bottom: 4px; font-size: 13px; }
+.sample-box { border: 1px solid #888; margin: 8px 0; font-family: 'Courier New', monospace; }
+.sample-title { background: #efefef; border-bottom: 1px solid #888; padding: 3px 8px; font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; }
+.sample-content { padding: 6px 8px; white-space: pre-wrap; background: #fff; }
+
+/* Trình soạn thảo code & Nộp bài */
+.submit-area { margin-top: 20px; padding-top: 15px; border-top: 1px dashed #b9b9b9; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+textarea.code-editor {
+  width: 100%; height: 240px; font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 13px; padding: 10px; border: 1px solid #888; background: #fcfcfc;
+  tab-size: 4; line-height: 1.4;
+}
+.btn-cf {
+  background: #efefef; border: 1px solid #888; padding: 5px 12px;
+  cursor: pointer; font-size: 12px; border-radius: 3px; font-weight: bold;
+}
+.btn-cf:hover { background: #e2e2e2; }
+.btn-primary { background: #3b5998; color: #fff; border-color: #2d4373; }
+.btn-primary:hover { background: #2d4373; }
+
+/* Kết quả chấm */
+.verdict-ac { color: #008000; font-weight: bold; }
+.verdict-wa { color: #dd0000; font-weight: bold; }
+.verdict-ce { color: #8a6d3b; font-weight: bold; }
+.verdict-run { color: #555; font-style: italic; }
+
+/* Hộp chạy thử */
+.custom-test-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.custom-test-box textarea { width: 100%; height: 90px; font-family: monospace; padding: 6px; border: 1px solid #aaa; font-size: 12px; }
+
+/* Form Giáo viên */
+.teacher-cloud-box { background: #eef3fb; border: 1px solid #b9c9e8; padding: 10px; border-radius: 4px; margin-bottom: 16px; }
+.form-group { margin-bottom: 10px; }
+.form-group label { display: block; font-weight: bold; margin-bottom: 3px; font-size: 12px; }
+.form-group input, .form-group textarea { width: 100%; padding: 6px; border: 1px solid #aaa; border-radius: 3px; font-size: 12px; }
+.testcase-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-bottom: 6px; align-items: start; }
+
+/* Rank màu */
+.rank-1 { color: #ff0000; font-weight: bold; }
+.rank-2 { color: #ff8c00; font-weight: bold; }
+.rank-3 { color: #0000ff; font-weight: bold; }
+.rank-other { color: #008000; font-weight: bold; }
+
+/* Modal xem lại code */
+.modal-bg {
+  display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); z-index: 999; justify-content: center; align-items: center;
+}
+.modal-box {
+  background: #fff; border: 1px solid #888; border-radius: 5px;
+  width: 90%; max-width: 700px; max-height: 85vh; display: flex; flex-direction: column;
+}
+.modal-body { padding: 12px; overflow: auto; }
+.modal-body pre { background: #f4f4f4; padding: 10px; border: 1px solid #ddd; font-family: monospace; white-space: pre-wrap; }
+
+@media (max-width: 820px) {
+  .main-layout { flex-direction: column; }
+  .sidebar-col { width: 100%; }
+  .custom-test-box { grid-template-columns: 1fr; }
+}
