@@ -1,7 +1,6 @@
-// Trạng thái ứng dụng
 let firebaseUrl = (localStorage.getItem('cc_firebase_url') || APP_CONFIG.DEFAULT_FIREBASE_URL).replace(/\/$/, '');
 let problems = JSON.parse(localStorage.getItem('cc_problems')) || DEFAULT_PROBLEMS;
-let submissions = JSON.parse(localStorage.getItem('cc_subs')) ||;
+let submissions = JSON.parse(localStorage.getItem('cc_subs')) || [];
 let studentName = localStorage.getItem('cc_student') || '';
 let isTeacherUnlocked = false;
 let currentProblem = null;
@@ -21,17 +20,19 @@ async function init() {
   renderLeaderboard();
   loadIdeTemplate();
 
-  // Hỗ trợ phím Tab trong trình soạn thảo code
   ['codeInput', 'ideCode'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', function(e) {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const start = this.selectionStart;
-        const end = this.selectionEnd;
-        this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
-        this.selectionStart = this.selectionEnd = start + 4;
-      }
-    });
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = this.selectionStart;
+          const end = this.selectionEnd;
+          this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+          this.selectionStart = this.selectionEnd = start + 4;
+        }
+      });
+    }
   });
 
   if (firebaseUrl) {
@@ -73,7 +74,7 @@ async function syncFromFirebase() {
         submissions = list;
         localStorage.setItem('cc_subs', JSON.stringify(submissions));
       } else {
-        submissions =;
+        submissions = [];
       }
       renderSubmissions();
       renderLeaderboard();
@@ -209,8 +210,8 @@ function openProblem(id) {
   document.getElementById('p-desc').innerText = currentProblem.desc;
   document.getElementById('p-input').innerText = currentProblem.inputDesc;
   document.getElementById('p-output').innerText = currentProblem.outputDesc;
-  document.getElementById('p-sample-in').innerText = currentProblem.tests?.in || '';
-  document.getElementById('p-sample-out').innerText = currentProblem.tests?.out || '';
+  document.getElementById('p-sample-in').innerText = currentProblem.tests[0]?.in || '';
+  document.getElementById('p-sample-out').innerText = currentProblem.tests[0]?.out || '';
 
   loadTemplateCode();
 }
@@ -253,8 +254,8 @@ function normalizeOutput(str) {
 async function runSampleTest() {
   const code = document.getElementById('codeInput').value;
   const lang = document.getElementById('langSelect').value;
-  const sampleIn = currentProblem.tests.in;
-  const expectedOut = normalizeOutput(currentProblem.tests.out);
+  const sampleIn = currentProblem.tests[0].in;
+  const expectedOut = normalizeOutput(currentProblem.tests[0].out);
 
   const box = document.getElementById('quickRunBox');
   const statusEl = document.getElementById('quickRunStatus');
@@ -450,7 +451,7 @@ function unlockTeacher() {
     isTeacherUnlocked = true;
     document.getElementById('teacherLock').style.display = 'none';
     document.getElementById('teacherPanel').style.display = 'block';
-    renderSubmissions(); // Mở khóa nút Xem code của toàn bộ học sinh
+    renderSubmissions();
   } else {
     alert('Sai mật khẩu Giáo viên!');
   }
@@ -481,8 +482,8 @@ async function resetClassSubmissions() {
   if (!firebaseUrl) return alert('Chưa kết nối Firebase!');
   if (confirm('Xóa toàn bộ lịch sử bài nộp và điểm số của cả lớp trên Firebase để bắt đầu buổi học mới?')) {
     await fetch(`${firebaseUrl}/submissions.json`, { method: 'DELETE' });
-    submissions =;
-    localStorage.setItem('cc_subs', '');
+    submissions = [];
+    localStorage.setItem('cc_subs', '[]');
     renderSubmissions();
     renderLeaderboard();
     updateStudentUI();
@@ -515,7 +516,7 @@ async function saveNewProblem() {
 
   if (!id || !title || !desc) return alert('Vui lòng nhập đủ Mã bài, Tên bài và Đề bài!');
 
-  const tests =;
+  const tests = [];
   document.querySelectorAll('#testcasesContainer .testcase-row').forEach(row => {
     const tIn = row.querySelector('.tc-in').value;
     const tOut = row.querySelector('.tc-out').value;
