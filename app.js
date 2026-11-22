@@ -235,9 +235,14 @@ function copyText(elId) {
 
 async function executeRemoteCode(langKey, code, stdin) {
   const cfg = LANG_CONFIG[langKey];
-  const res = await fetch(APP_CONFIG.PISTON_EXECUTE_URL, {
+  const endpoint = APP_CONFIG.COMPILER_HOST + APP_CONFIG.COMPILER_PATH;
+
+  const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': APP_CONFIG.COMPILER_API_KEY
+    },
     body: JSON.stringify({
       language: cfg.language,
       version: cfg.version,
@@ -245,9 +250,13 @@ async function executeRemoteCode(langKey, code, stdin) {
       stdin: stdin
     })
   });
-  if (!res.ok) throw new Error('Máy chủ biên dịch tạm bận, vui lòng thử lại sau vài giây.');
+
+  if (!res.ok) {
+    throw new Error('Lỗi máy chủ biên dịch (Mã ' + res.status + '). Kiểm tra lại API Key!');
+  }
   return await res.json();
 }
+
 
 function normalizeOutput(str) {
   return (str || '').trim().split('\n').map(line => line.trimEnd()).join('\n');
