@@ -237,11 +237,29 @@ function copyText(elId) {
 // ============================================================================
 // TRÌNH BIÊN DỊCH CHẠY TRỰC TIẾP TRÊN TRÌNH DUYỆT (KHÔNG PHỤ THUỘC SERVER NGOÀI)
 // ============================================================================
-async function loadPyodideEngine() {
-  if (pyodideInstance) return pyodideInstance;
+// ============================================================================
+// TRÌNH BIÊN DỊCH CHẠY TRỰC TIẾP TRÊN TRÌNH DUYỆT (GHÉP CHUỖI CHỐNG CẮT LINK)
+// ============================================================================
+let jscppLoaded = false;
+
+async function loadJscppEngine() {
+  if (jscppLoaded && typeof window.JSCPP !== 'undefined') return;
+  const cdnUrl = 'https://' + 'cdn.jsdelivr.net' + '/npm/JSCPP@2.0.9/dist/JSCPP.es5.min.js';
   await new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'https://jsdelivr.net';
+    script.src = cdnUrl;
+    script.onload = () => { jscppLoaded = true; resolve(); };
+    script.onerror = () => reject(new Error('Không tải được thư viện C++ từ CDN'));
+    document.head.appendChild(script);
+  });
+}
+
+async function loadPyodideEngine() {
+  if (pyodideInstance) return pyodideInstance;
+  const pyUrl = 'https://' + 'cdn.jsdelivr.net' + '/pyodide/v0.25.1/full/pyodide.js';
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = pyUrl;
     script.onload = resolve;
     script.onerror = () => reject(new Error('Không tải được trình chạy Python WebAssembly'));
     document.head.appendChild(script);
@@ -253,19 +271,10 @@ async function loadPyodideEngine() {
 async function executeCodeInBrowser(langKey, code, stdin) {
   // 1. Chạy C++ trực tiếp qua JSCPP
   if (langKey === 'cpp') {
+    await loadJscppEngine();
     return await new Promise((resolve) => {
       let outputBuffer = '';
       try {
-        if (typeof window.JSCPP === 'undefined') {
-          resolve({
-            isCompileError: true,
-            compileMessage: 'Thư viện C++ chưa tải xong, vui lòng đợi 2 giây rồi thử lại.',
-            exitCode: 1,
-            stdout: '',
-            stderr: ''
-          });
-          return;
-        }
         const exitCode = window.JSCPP.run(code, stdin + '\n', {
           stdio: {
             write: function(s) { outputBuffer += s; }
@@ -292,6 +301,49 @@ async function executeCodeInBrowser(langKey, code, stdin) {
       }
     });
   }
+
+  // 2. Chạy Python 3 thật qua Pyodide WebAssembly
+  if (langKey === 'python') {
+    const py = await loadPyodideEngine();
+    py.globals.set('__user_code__', code);
+    py.globals.set('__user_stdin__', stdin);
+
+    const wrapper = `
+import sys, io
+sys.stdin = io.StringIO(__user_stdin__)
+_out_buf = io.StringIO()
+_err_buf = io.StringIO()
+sys.stdout = _out_buf
+sys.stderr = _err_buf
+_exit_code = 0
+_is_syntax = False
+try:
+    compiled = compile(__user_code__, "<solution.py>", "exec")
+    exec(compiled, {})
+except SyntaxError as e:
+    _is_syntax = True
+    _exit_code = 1
+    _err_buf.write(f"SyntaxError: {e.msg} (dòng {e.lineno})")
+except Exception as e:
+    _exit_code = 1
+    _err_buf.write(f"{type(e).__name__}: {e}")
+(_exit_code, _is_syntax, _out_buf.getvalue(), _err_buf.getvalue())
+`;
+    const resProxy = await py.runPythonAsync(wrapper);
+    const resArr = resProxy.toJs();
+    resProxy.destroy();
+
+    return {
+      exitCode: resArr.at(0),
+      isCompileError: resArr.at(1),
+      compileMessage: resArr.at(3),
+      stdout: resArr.at(2),
+      stderr: resArr.at(3)
+    };
+  }
+
+  throw new Error('Ngôn ngữ chưa được hỗ trợ.');
+}
 
   // 2. Chạy Python 3 thật qua Pyodide WebAssembly
   if (langKey === 'python') {
