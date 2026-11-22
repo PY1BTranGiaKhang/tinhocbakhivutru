@@ -233,30 +233,44 @@ function copyText(elId) {
   alert('Đã sao chép Input mẫu!');
 }
 
+// Gọi máy chủ biên dịch Wandbox (hỗ trợ CORS trực tiếp từ GitHub Pages)
 async function executeRemoteCode(langKey, code, stdin) {
   const cfg = LANG_CONFIG[langKey];
-  const endpoint = APP_CONFIG.COMPILER_HOST + APP_CONFIG.COMPILER_PATH;
+  const endpoint = APP_CONFIG.WANDBOX_HOST + APP_CONFIG.WANDBOX_PATH;
+
+  // Nghỉ 400ms giữa các lần gọi để tránh nghẽn mạng
+  await new Promise(r => setTimeout(r, 400));
 
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': APP_CONFIG.COMPILER_API_KEY
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      language: cfg.language,
-      version: cfg.version,
-      files: Array.of({ name: cfg.file, content: code }),
-      stdin: stdin
+      compiler: cfg.compiler,
+      code: code,
+      stdin: stdin,
+      options: cfg.options
     })
   });
 
   if (!res.ok) {
-    throw new Error('Lỗi máy chủ biên dịch (Mã ' + res.status + '). Kiểm tra lại API Key!');
+    throw new Error('HTTP ' + res.status);
   }
-  return await res.json();
-}
 
+  const data = await res.json();
+  // Chuẩn hóa dữ liệu trả về từ Wandbox
+  const status = Number(data.status || 0);
+  const compilerErr = data.compiler_error || '';
+  const programOut = data.program_output || '';
+  const programErr = data.program_error || '';
+
+  return {
+    isCompileError: Boolean(compilerErr && status !== 0 && !programOut),
+    compileMessage: compilerErr,
+    exitCode: status,
+    stdout: programOut,
+    stderr: programErr || compilerErr
+  };
+}
 
 function normalizeOutput(str) {
   return (str || '').trim().split('\n').map(line => line.trimEnd()).join('\n');
@@ -275,25 +289,25 @@ async function runSampleTest() {
 
   box.style.display = 'block';
   statusEl.className = 'verdict-run';
-  statusEl.innerText = '⏳ Đang gửi code lên máy chủ biên dịch và chạy thử...';
+  statusEl.innerText = '⏳ Đang biên dịch và chạy thử trên máy chủ...';
   outEl.innerText = '';
 
   try {
     const result = await executeRemoteCode(lang, code, sampleIn);
-    if (result.compile && result.compile.code !== 0) {
+    if (result.isCompileError) {
       statusEl.className = 'verdict-ce';
       statusEl.innerText = '❌ Lỗi biên dịch (Compilation Error):';
-      outEl.innerText = result.compile.stderr || result.compile.output;
+      outEl.innerText = result.compileMessage;
       return;
     }
-    if (result.run.code !== 0) {
+    if (result.exitCode !== 0) {
       statusEl.className = 'verdict-wa';
       statusEl.innerText = '❌ Lỗi thực thi (Runtime Error):';
-      outEl.innerText = result.run.stderr || 'Chương trình thoát với mã lỗi ' + result.run.code;
+      outEl.innerText = result.stderr || 'Chương trình thoát với mã lỗi ' + result.exitCode;
       return;
     }
 
-    const actualOut = normalizeOutput(result.run.stdout);
+    const actualOut = normalizeOutput(result.stdout);
     if (actualOut === expectedOut) {
       statusEl.className = 'verdict-ac';
       statusEl.innerText = '✔ Khớp với Ví dụ 1! Em có thể bấm "Nộp bài chấm điểm".';
@@ -304,7 +318,7 @@ async function runSampleTest() {
     outEl.innerText = `--- Output của em ---\n${actualOut}\n\n--- Output chuẩn ---\n${expectedOut}`;
   } catch (err) {
     statusEl.className = 'verdict-wa';
-    statusEl.innerText = 'Lỗi: ' + err.message;
+    statusEl.innerText = 'Lỗi kết nối: ' + err.message;
   }
 }
 
@@ -343,21 +357,21 @@ async function submitRealCode() {
     try {
       const res = await executeRemoteCode(lang, code, testCase.in);
 
-      if (res.compile && res.compile.code !== 0) {
+      if (res.isCompileError) {
         newSub.verdict = 'Compilation Error';
         newSub.statusClass = 'verdict-ce';
         await finalizeSubmission(newSub);
         return;
       }
 
-      if (res.run.code !== 0) {
+      if (res.exitCode !== 0) {
         newSub.verdict = `Runtime Error on test ${i + 1}`;
         newSub.statusClass = 'verdict-wa';
         await finalizeSubmission(newSub);
         return;
       }
 
-      const actual = normalizeOutput(res.run.stdout);
+      const actual = normalizeOutput(res.stdout);
       const expected = normalizeOutput(testCase.out);
 
       if (actual !== expected) {
@@ -367,7 +381,7 @@ async function submitRealCode() {
         return;
       }
     } catch (e) {
-      newSub.verdict = 'Judge Error (Lỗi mạng)';
+      newSub.verdict = `Judge Error (${e.message})`;
       newSub.statusClass = 'verdict-ce';
       await finalizeSubmission(newSub);
       return;
@@ -446,12 +460,12 @@ async function runCustomIDE() {
   outEl.value = '⏳ Đang biên dịch và thực thi trên máy chủ...';
   try {
     const res = await executeRemoteCode(lang, code, input);
-    if (res.compile && res.compile.code !== 0) {
-      outEl.value = 'LỖI BIÊN DỊCH:\n' + (res.compile.stderr || res.compile.output);
-    } else if (res.run.code !== 0) {
-      outEl.value = 'LỖI THỰC THI:\n' + (res.run.stderr || res.run.stdout);
+    if (res.isCompileError) {
+      outEl.value = 'LỖI BIÊN DỊCH:\n' + res.compileMessage;
+    } else if (res.exitCode !== 0) {
+      outEl.value = 'LỖI THỰC THI:\n' + (res.stderr || res.stdout);
     } else {
-      outEl.value = res.run.stdout || '(Chương trình chạy xong, không có dữ liệu in ra)';
+      outEl.value = res.stdout || '(Chương trình chạy xong, không có dữ liệu in ra)';
     }
   } catch (e) {
     outEl.value = 'Lỗi kết nối: ' + e.message;
