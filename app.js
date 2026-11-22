@@ -4,6 +4,7 @@ let submissions = JSON.parse(localStorage.getItem('cc_subs')) || new Array();
 let studentName = localStorage.getItem('cc_student') || '';
 let isTeacherUnlocked = false;
 let currentProblem = null;
+let pyodideInstance = null;
 
 async function init() {
   if (!studentName) {
@@ -233,43 +234,106 @@ function copyText(elId) {
   alert('Đã sao chép Input mẫu!');
 }
 
-// Gọi máy chủ biên dịch Wandbox (hỗ trợ CORS trực tiếp từ GitHub Pages)
-async function executeRemoteCode(langKey, code, stdin) {
-  const cfg = LANG_CONFIG[langKey];
-  const endpoint = APP_CONFIG.WANDBOX_HOST + APP_CONFIG.WANDBOX_PATH;
-
-  // Nghỉ 400ms giữa các lần gọi để tránh nghẽn mạng
-  await new Promise(r => setTimeout(r, 400));
-
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      compiler: cfg.compiler,
-      code: code,
-      stdin: stdin,
-      options: cfg.options
-    })
+// ============================================================================
+// TRÌNH BIÊN DỊCH CHẠY TRỰC TIẾP TRÊN TRÌNH DUYỆT (KHÔNG PHỤ THUỘC SERVER NGOÀI)
+// ============================================================================
+async function loadPyodideEngine() {
+  if (pyodideInstance) return pyodideInstance;
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://jsdelivr.net';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Không tải được trình chạy Python WebAssembly'));
+    document.head.appendChild(script);
   });
+  pyodideInstance = await window.loadPyodide();
+  return pyodideInstance;
+}
 
-  if (!res.ok) {
-    throw new Error('HTTP ' + res.status);
+async function executeCodeInBrowser(langKey, code, stdin) {
+  // 1. Chạy C++ trực tiếp qua JSCPP
+  if (langKey === 'cpp') {
+    return await new Promise((resolve) => {
+      let outputBuffer = '';
+      try {
+        if (typeof window.JSCPP === 'undefined') {
+          resolve({
+            isCompileError: true,
+            compileMessage: 'Thư viện C++ chưa tải xong, vui lòng đợi 2 giây rồi thử lại.',
+            exitCode: 1,
+            stdout: '',
+            stderr: ''
+          });
+          return;
+        }
+        const exitCode = window.JSCPP.run(code, stdin + '\n', {
+          stdio: {
+            write: function(s) { outputBuffer += s; }
+          },
+          maxTimeout: 3000
+        });
+        resolve({
+          isCompileError: false,
+          compileMessage: '',
+          exitCode: exitCode || 0,
+          stdout: outputBuffer,
+          stderr: ''
+        });
+      } catch (err) {
+        const msg = String(err.message || err);
+        const isSyntax = msg.toLowerCase().includes('syntax') || msg.toLowerCase().includes('parse') || msg.toLowerCase().includes('undeclared');
+        resolve({
+          isCompileError: isSyntax,
+          compileMessage: msg,
+          exitCode: 1,
+          stdout: outputBuffer,
+          stderr: msg
+        });
+      }
+    });
   }
 
-  const data = await res.json();
-  // Chuẩn hóa dữ liệu trả về từ Wandbox
-  const status = Number(data.status || 0);
-  const compilerErr = data.compiler_error || '';
-  const programOut = data.program_output || '';
-  const programErr = data.program_error || '';
+  // 2. Chạy Python 3 thật qua Pyodide WebAssembly
+  if (langKey === 'python') {
+    const py = await loadPyodideEngine();
+    py.globals.set('__user_code__', code);
+    py.globals.set('__user_stdin__', stdin);
 
-  return {
-    isCompileError: Boolean(compilerErr && status !== 0 && !programOut),
-    compileMessage: compilerErr,
-    exitCode: status,
-    stdout: programOut,
-    stderr: programErr || compilerErr
-  };
+    const wrapper = `
+import sys, io
+sys.stdin = io.StringIO(__user_stdin__)
+_out_buf = io.StringIO()
+_err_buf = io.StringIO()
+sys.stdout = _out_buf
+sys.stderr = _err_buf
+_exit_code = 0
+_is_syntax = False
+try:
+    compiled = compile(__user_code__, "<solution.py>", "exec")
+    exec(compiled, {})
+except SyntaxError as e:
+    _is_syntax = True
+    _exit_code = 1
+    _err_buf.write(f"SyntaxError: {e.msg} (dòng {e.lineno})")
+except Exception as e:
+    _exit_code = 1
+    _err_buf.write(f"{type(e).__name__}: {e}")
+(_exit_code, _is_syntax, _out_buf.getvalue(), _err_buf.getvalue())
+`;
+    const resProxy = await py.runPythonAsync(wrapper);
+    const resArr = resProxy.toJs();
+    resProxy.destroy();
+
+    return {
+      exitCode: resArr.at(0),
+      isCompileError: resArr.at(1),
+      compileMessage: resArr.at(3),
+      stdout: resArr.at(2),
+      stderr: resArr.at(3)
+    };
+  }
+
+  throw new Error('Ngôn ngữ chưa được hỗ trợ.');
 }
 
 function normalizeOutput(str) {
@@ -289,11 +353,15 @@ async function runSampleTest() {
 
   box.style.display = 'block';
   statusEl.className = 'verdict-run';
-  statusEl.innerText = '⏳ Đang biên dịch và chạy thử trên máy chủ...';
+  statusEl.innerText = lang === 'python' && !pyodideInstance
+    ? '⏳ Đang khởi tạo trình biên dịch Python lần đầu (mất khoảng 3-5 giây)...'
+    : '⏳ Đang biên dịch và chạy thử...';
   outEl.innerText = '';
 
+  await new Promise(r => setTimeout(r, 50));
+
   try {
-    const result = await executeRemoteCode(lang, code, sampleIn);
+    const result = await executeCodeInBrowser(lang, code, sampleIn);
     if (result.isCompileError) {
       statusEl.className = 'verdict-ce';
       statusEl.innerText = '❌ Lỗi biên dịch (Compilation Error):';
@@ -318,7 +386,7 @@ async function runSampleTest() {
     outEl.innerText = `--- Output của em ---\n${actualOut}\n\n--- Output chuẩn ---\n${expectedOut}`;
   } catch (err) {
     statusEl.className = 'verdict-wa';
-    statusEl.innerText = 'Lỗi kết nối: ' + err.message;
+    statusEl.innerText = 'Lỗi: ' + err.message;
   }
 }
 
@@ -353,9 +421,10 @@ async function submitRealCode() {
     const testCase = prob.tests.at(i);
     newSub.verdict = `Running on test ${i + 1}...`;
     renderSubmissions();
+    await new Promise(r => setTimeout(r, 80));
 
     try {
-      const res = await executeRemoteCode(lang, code, testCase.in);
+      const res = await executeCodeInBrowser(lang, code, testCase.in);
 
       if (res.isCompileError) {
         newSub.verdict = 'Compilation Error';
@@ -381,8 +450,8 @@ async function submitRealCode() {
         return;
       }
     } catch (e) {
-      newSub.verdict = `Judge Error (${e.message})`;
-      newSub.statusClass = 'verdict-ce';
+      newSub.verdict = `Runtime Error (${e.message})`;
+      newSub.statusClass = 'verdict-wa';
       await finalizeSubmission(newSub);
       return;
     }
@@ -457,9 +526,11 @@ async function runCustomIDE() {
   const input = document.getElementById('ideInput').value;
   const outEl = document.getElementById('ideOutput');
 
-  outEl.value = '⏳ Đang biên dịch và thực thi trên máy chủ...';
+  outEl.value = '⏳ Đang biên dịch và thực thi...';
+  await new Promise(r => setTimeout(r, 50));
+
   try {
-    const res = await executeRemoteCode(lang, code, input);
+    const res = await executeCodeInBrowser(lang, code, input);
     if (res.isCompileError) {
       outEl.value = 'LỖI BIÊN DỊCH:\n' + res.compileMessage;
     } else if (res.exitCode !== 0) {
@@ -468,7 +539,7 @@ async function runCustomIDE() {
       outEl.value = res.stdout || '(Chương trình chạy xong, không có dữ liệu in ra)';
     }
   } catch (e) {
-    outEl.value = 'Lỗi kết nối: ' + e.message;
+    outEl.value = 'Lỗi: ' + e.message;
   }
 }
 
