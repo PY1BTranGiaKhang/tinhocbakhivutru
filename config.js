@@ -1,29 +1,26 @@
 const APP_CONFIG = {
-  // Dán URL Firebase Realtime Database của bạn vào đây (nếu có)
+  // Dán URL Firebase Realtime Database của bạn vào giữa dấu ngoặc kép (nếu có)
   DEFAULT_FIREBASE_URL: "",
 
   // Mật khẩu mở tab Quản lý của Giáo viên
   TEACHER_PASSWORD: "123456",
 
-  // Dán API Key miễn phí lấy từ OnlineCompiler.io vào giữa dấu ngoặc kép
-  COMPILER_API_KEY: "39daa35df9684a2aee54e63b3983d88d",
-
-  // Cấu trúc ghép URL tránh bị trình duyệt rút gọn
-  COMPILER_HOST: "https://api.onlinecompiler.io",
-  COMPILER_PATH: "/api/v2/piston/execute"
+  // Máy chủ biên dịch mở hỗ trợ GitHub Pages (không cần API Key)
+  WANDBOX_HOST: "https://wandbox.org",
+  WANDBOX_PATH: "/api/compile.json"
 };
 
 const LANG_CONFIG = {
-  cpp: { language: "c++", version: "10.2.0", file: "main.cpp" },
-  python: { language: "python", version: "3.10.0", file: "main.py" },
-  java: { language: "java", version: "15.0.2", file: "Main.java" },
-  pascal: { language: "pascal", version: "3.2.2", file: "main.pas" }
+  cpp: { compiler: "gcc-head", options: "warning,gnu++20" },
+  python: { compiler: "cpython-head", options: "" },
+  java: { compiler: "openjdk-head", options: "" },
+  pascal: { compiler: "fpc-head", options: "" }
 };
 
 const CODE_TEMPLATES = {
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Viết code C++ tại đây\n    \n    return 0;\n}`,
   python: `# Viết code Python tại đây\n`,
-  java: `import java.util.*;\n\npublic class Main {\n    public static void main(String... args) {\n        Scanner sc = new Scanner(System.in);\n        \n    }\n}`,
+  java: `import java.util.*;\n\npublic class prog {\n    public static void main(String... args) {\n        Scanner sc = new Scanner(System.in);\n        \n    }\n}`,
   pascal: `program BaiTap;\nbegin\n    { Viết code Pascal tại đây }\nend.`
 };
 
