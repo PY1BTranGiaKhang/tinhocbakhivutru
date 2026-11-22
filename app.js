@@ -1,6 +1,6 @@
 let firebaseUrl = (localStorage.getItem('cc_firebase_url') || APP_CONFIG.DEFAULT_FIREBASE_URL).replace(/\/$/, '');
 let problems = JSON.parse(localStorage.getItem('cc_problems')) || DEFAULT_PROBLEMS;
-let submissions = JSON.parse(localStorage.getItem('cc_subs')) || [];
+let submissions = JSON.parse(localStorage.getItem('cc_subs')) || new Array();
 let studentName = localStorage.getItem('cc_student') || '';
 let isTeacherUnlocked = false;
 let currentProblem = null;
@@ -20,7 +20,7 @@ async function init() {
   renderLeaderboard();
   loadIdeTemplate();
 
-  ['codeInput', 'ideCode'].forEach(id => {
+  Array.of('codeInput', 'ideCode').forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener('keydown', function(e) {
@@ -74,7 +74,7 @@ async function syncFromFirebase() {
         submissions = list;
         localStorage.setItem('cc_subs', JSON.stringify(submissions));
       } else {
-        submissions = [];
+        submissions = new Array();
       }
       renderSubmissions();
       renderLeaderboard();
@@ -163,7 +163,7 @@ function renderLeaderboard() {
 }
 
 function showTab(tabName) {
-  ['problemset', 'submissions', 'custom', 'teacher'].forEach(t => {
+  Array.of('problemset', 'submissions', 'custom', 'teacher').forEach(t => {
     document.getElementById('tab-' + t).style.display = (t === tabName) ? 'block' : 'none';
     const nav = document.getElementById('nav-' + t);
     if (nav) nav.classList.toggle('active', t === tabName);
@@ -210,8 +210,10 @@ function openProblem(id) {
   document.getElementById('p-desc').innerText = currentProblem.desc;
   document.getElementById('p-input').innerText = currentProblem.inputDesc;
   document.getElementById('p-output').innerText = currentProblem.outputDesc;
-  document.getElementById('p-sample-in').innerText = currentProblem.tests[0]?.in || '';
-  document.getElementById('p-sample-out').innerText = currentProblem.tests[0]?.out || '';
+
+  const firstTest = currentProblem.tests.at(0);
+  document.getElementById('p-sample-in').innerText = firstTest ? firstTest.in : '';
+  document.getElementById('p-sample-out').innerText = firstTest ? firstTest.out : '';
 
   loadTemplateCode();
 }
@@ -239,7 +241,7 @@ async function executeRemoteCode(langKey, code, stdin) {
     body: JSON.stringify({
       language: cfg.language,
       version: cfg.version,
-      files: [{ name: cfg.file, content: code }],
+      files: Array.of({ name: cfg.file, content: code }),
       stdin: stdin
     })
   });
@@ -254,8 +256,9 @@ function normalizeOutput(str) {
 async function runSampleTest() {
   const code = document.getElementById('codeInput').value;
   const lang = document.getElementById('langSelect').value;
-  const sampleIn = currentProblem.tests[0].in;
-  const expectedOut = normalizeOutput(currentProblem.tests[0].out);
+  const firstTest = currentProblem.tests.at(0);
+  const sampleIn = firstTest.in;
+  const expectedOut = normalizeOutput(firstTest.out);
 
   const box = document.getElementById('quickRunBox');
   const statusEl = document.getElementById('quickRunStatus');
@@ -324,11 +327,12 @@ async function submitRealCode() {
   showTab('submissions');
 
   for (let i = 0; i < prob.tests.length; i++) {
+    const testCase = prob.tests.at(i);
     newSub.verdict = `Running on test ${i + 1}...`;
     renderSubmissions();
 
     try {
-      const res = await executeRemoteCode(lang, code, prob.tests[i].in);
+      const res = await executeRemoteCode(lang, code, testCase.in);
 
       if (res.compile && res.compile.code !== 0) {
         newSub.verdict = 'Compilation Error';
@@ -345,7 +349,7 @@ async function submitRealCode() {
       }
 
       const actual = normalizeOutput(res.run.stdout);
-      const expected = normalizeOutput(prob.tests[i].out);
+      const expected = normalizeOutput(testCase.out);
 
       if (actual !== expected) {
         newSub.verdict = `Wrong answer on test ${i + 1}`;
@@ -413,7 +417,7 @@ function renderSubmissions() {
 }
 
 function viewSubmittedCode(idx) {
-  const s = submissions[idx];
+  const s = submissions.at(idx);
   if (!s) return;
   if (!isTeacherUnlocked && s.student !== studentName) {
     return alert('Chỉ Giáo viên mới có quyền xem mã nguồn của học sinh khác!');
@@ -482,8 +486,8 @@ async function resetClassSubmissions() {
   if (!firebaseUrl) return alert('Chưa kết nối Firebase!');
   if (confirm('Xóa toàn bộ lịch sử bài nộp và điểm số của cả lớp trên Firebase để bắt đầu buổi học mới?')) {
     await fetch(`${firebaseUrl}/submissions.json`, { method: 'DELETE' });
-    submissions = [];
-    localStorage.setItem('cc_subs', '[]');
+    submissions = new Array();
+    localStorage.setItem('cc_subs', JSON.stringify(submissions));
     renderSubmissions();
     renderLeaderboard();
     updateStudentUI();
@@ -516,7 +520,7 @@ async function saveNewProblem() {
 
   if (!id || !title || !desc) return alert('Vui lòng nhập đủ Mã bài, Tên bài và Đề bài!');
 
-  const tests = [];
+  const tests = new Array();
   document.querySelectorAll('#testcasesContainer .testcase-row').forEach(row => {
     const tIn = row.querySelector('.tc-in').value;
     const tOut = row.querySelector('.tc-out').value;
@@ -527,7 +531,7 @@ async function saveNewProblem() {
 
   const existingIdx = problems.findIndex(p => p.id === id);
   const probObj = { id, title, diff, tag, desc, inputDesc, outputDesc, tests };
-  if (existingIdx >= 0) problems[existingIdx] = probObj;
+  if (existingIdx >= 0) problems.splice(existingIdx, 1, probObj);
   else problems.push(probObj);
 
   localStorage.setItem('cc_problems', JSON.stringify(problems));
