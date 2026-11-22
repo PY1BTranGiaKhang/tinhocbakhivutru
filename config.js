@@ -1,12 +1,16 @@
 const APP_CONFIG = {
-  // Dán URL Firebase Realtime Database của bạn vào giữa dấu ngoặc kép (nếu có)
+  // Dán URL Firebase Realtime Database của bạn vào đây (nếu có)
   DEFAULT_FIREBASE_URL: "",
 
   // Mật khẩu mở tab Quản lý của Giáo viên
   TEACHER_PASSWORD: "123456",
 
-  // API máy chủ biên dịch code thật (Piston)
-  PISTON_EXECUTE_URL: "https://emkc.org"
+  // Dán API Key miễn phí lấy từ OnlineCompiler.io vào giữa dấu ngoặc kép
+  COMPILER_API_KEY: "39daa35df9684a2aee54e63b3983d88d",
+
+  // Cấu trúc ghép URL tránh bị trình duyệt rút gọn
+  COMPILER_HOST: "https://api.onlinecompiler.io",
+  COMPILER_PATH: "/api/v2/piston/execute"
 };
 
 const LANG_CONFIG = {
