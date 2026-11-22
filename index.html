@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CodeClass Cloud — Hệ Thống Chấm Bài Lớp Học Trực Tuyến</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- Thư viện chạy C++ thật ngay trên trình duyệt (JSCPP) -->
+  <script src="https://jsdelivr.net"></script>
 </head>
 <body>
   <div class="wrapper">
@@ -39,7 +41,7 @@
         <div id="tab-problemset" class="cf-box">
           <div class="cf-box-header">
             <span>Danh sách bài tập luyện tập</span>
-            <span style="font-weight:normal; font-size:11px; color:#555;">Máy chấm: Piston Cloud Compiler</span>
+            <span style="font-weight:normal; font-size:11px; color:#006600;">● Máy chấm: Trình biên dịch WebAssembly trực tiếp (C++ / Python / JS)</span>
           </div>
           <table class="cf-table" id="problemTable">
             <thead>
@@ -91,10 +93,8 @@
                 <div>
                   <b>Ngôn ngữ: </b>
                   <select id="langSelect" onchange="loadTemplateCode()">
-                    <option value="cpp">C++ (GCC 10.2.0)</option>
-                    <option value="python">Python (3.10.0)</option>
-                    <option value="java">Java (OpenJDK 15.0.2)</option>
-                    <option value="pascal">Free Pascal (3.2.2)</option>
+                    <option value="cpp">C++ (Trình thông dịch C++ trực tiếp)</option>
+                    <option value="python">Python 3 (Pyodide WebAssembly)</option>
                   </select>
                 </div>
                 <div>
@@ -144,10 +144,8 @@
               <div>
                 <b>Ngôn ngữ: </b>
                 <select id="ideLang" onchange="loadIdeTemplate()">
-                  <option value="cpp">C++ (GCC 10.2.0)</option>
-                  <option value="python">Python (3.10.0)</option>
-                  <option value="java">Java (OpenJDK 15.0.2)</option>
-                  <option value="pascal">Free Pascal (3.2.2)</option>
+                  <option value="cpp">C++ (Trình thông dịch C++ trực tiếp)</option>
+                  <option value="python">Python 3 (Pyodide WebAssembly)</option>
                 </select>
               </div>
               <button class="btn-cf btn-primary" onclick="runCustomIDE()">▶ Biên dịch & Chạy (Run)</button>
@@ -184,7 +182,7 @@
                 <h4 style="color:#3b5998; margin-bottom:6px;">1. Kết nối Firebase Realtime Database (Thu bài cả lớp)</h4>
                 <div class="form-group">
                   <label>Dán URL Firebase Database của bạn vào đây:</label>
-                  <input type="text" id="firebaseUrlInput" placeholder="https://firebasedatabase.app" />
+                  <input type="text" id="firebaseUrlInput" placeholder="https://firebaseio.com" />
                 </div>
                 <button class="btn-cf btn-primary" onclick="saveFirebaseConfig()">Lưu & Đồng bộ lên Cloud</button>
                 <button class="btn-cf" onclick="resetClassSubmissions()" style="margin-left:6px; color:#c00;">Xóa bài nộp cũ trên Cloud</button>
@@ -296,7 +294,6 @@
     </div>
   </div>
 
-  <!-- Nạp các file JavaScript theo đúng thứ tự -->
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
