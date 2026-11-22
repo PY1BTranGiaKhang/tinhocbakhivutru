@@ -244,7 +244,7 @@ let jscppLoaded = false;
 
 async function loadJscppEngine() {
   if (jscppLoaded && typeof window.JSCPP !== 'undefined') return;
-  const cdnUrl = 'https://' + 'cdn.jsdelivr.net' + '/npm/JSCPP@2.0.9/dist/JSCPP.es5.min.js';
+  const cdnUrl = 'https://' + 'cdn.jsdelivr.net' + '/npm/JSCPP@2.0.6/dist/JSCPP.es5.min.js';
   await new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = cdnUrl;
@@ -253,6 +253,7 @@ async function loadJscppEngine() {
     document.head.appendChild(script);
   });
 }
+
 
 async function loadPyodideEngine() {
   if (pyodideInstance) return pyodideInstance;
