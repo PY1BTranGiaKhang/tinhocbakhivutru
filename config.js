@@ -1,10 +1,5 @@
-// =========================================================================
-// CẤU HÌNH HỆ THỐNG (Giáo viên chỉnh sửa tại đây)
-// =========================================================================
-
 const APP_CONFIG = {
-  // Dán URL Firebase Realtime Database của bạn vào giữa dấu ngoặc kép
-  // Ví dụ: "https://firebasedatabase.app"
+  // Dán URL Firebase Realtime Database của bạn vào giữa dấu ngoặc kép (nếu có)
   DEFAULT_FIREBASE_URL: "",
 
   // Mật khẩu mở tab Quản lý của Giáo viên
@@ -14,7 +9,6 @@ const APP_CONFIG = {
   PISTON_EXECUTE_URL: "https://emkc.org"
 };
 
-// Cấu hình các ngôn ngữ hỗ trợ chấm tự động
 const LANG_CONFIG = {
   cpp: { language: "c++", version: "10.2.0", file: "main.cpp" },
   python: { language: "python", version: "3.10.0", file: "main.py" },
@@ -22,15 +16,13 @@ const LANG_CONFIG = {
   pascal: { language: "pascal", version: "3.2.2", file: "main.pas" }
 };
 
-// Code mẫu khi học sinh chọn ngôn ngữ
 const CODE_TEMPLATES = {
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Viết code C++ tại đây\n    \n    return 0;\n}`,
   python: `# Viết code Python tại đây\n`,
-  java: `import java.util.*;\n\npublic class Main {\n    public static void main(String args) {\n        Scanner sc = new Scanner(System.in);\n        \n    }\n}`,
+  java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        \n    }\n}`,
   pascal: `program BaiTap;\nbegin\n    { Viết code Pascal tại đây }\nend.`
 };
 
-// Bộ đề khởi tạo ban đầu
 const DEFAULT_PROBLEMS = [
   {
     id: "B01",
